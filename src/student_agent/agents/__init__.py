@@ -1,13 +1,9 @@
-"""Specialist agents package for Day09 L3B workflow."""
+"""Specialist agents cho coordinator L3B.
 
-from . import entity_customer, order_shipment, payment_policy
-from .order_shipment import OrderShipmentAgent, OrderShipmentResult, run_order_shipment_agent
+Quyền sở hữu (KE_HOACH_MILESTONE.md §11):
+  - `entity_customer`  -> Lê Việt Hoàng
+  - `order_shipment`   -> Trịnh Xuân Huy
+  - `payment_policy`   -> Hoàng Ngọc Đức
 
-__all__ = [
-    "entity_customer",
-    "order_shipment",
-    "payment_policy",
-    "OrderShipmentAgent",
-    "OrderShipmentResult",
-    "run_order_shipment_agent",
-]
+Mọi agent nhận `(case, gateway, trace)` và chỉ dùng tool đã discovery.
+"""

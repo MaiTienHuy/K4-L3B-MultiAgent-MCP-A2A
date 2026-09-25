@@ -2,57 +2,86 @@
   "schema_version": "day09-l3b-output-v2",
   "case_id": "L3B_CASE_062",
   "assessment": {
-    "primary_issue": "insufficient_evidence",
-    "secondary_issues": [],
-    "case_status": "needs_investigation",
-    "confidence": 0.35
+    "primary_issue": "valid_split_payment",
+    "secondary_issues": [
+      "refund_failed"
+    ],
+    "case_status": "no_action",
+    "confidence": 0.95
   },
   "affected_entities": {
-    "order_ids": [],
-    "item_ids": [],
-    "seller_ids": [],
-    "payment_references": [],
+    "order_ids": [
+      "8ac5066a163c60c1ae9bf17200df3dd1"
+    ],
+    "item_ids": [
+      "item-8ac5066a163c"
+    ],
+    "seller_ids": [
+      "seller-8ac5066a163c"
+    ],
+    "payment_references": [
+      "credit_card:1:52.00",
+      "credit_card:1:44.50",
+      "voucher:2:44.50"
+    ],
     "shipment_ids": []
   },
   "entity_resolution": {
-    "status": "not_found",
-    "resolved_order_ids": [],
+    "status": "resolved",
+    "resolved_order_ids": [
+      "8ac5066a163c60c1ae9bf17200df3dd1"
+    ],
     "rejected_candidates": [
-      "8ac5066a163c60c1ae9bf17200df3dd1",
       "candidate-062"
     ],
-    "confidence": 0.25
+    "confidence": 0.85
   },
   "customer_context": {
     "customer_unique_id": "customer-f17200df3dd1",
-    "related_order_ids": []
+    "related_order_ids": [
+      "8ac5066a163c60c1ae9bf17200df3dd1"
+    ]
   },
   "shipment_analysis": {
-    "verdict": "insufficient_evidence",
+    "verdict": "on_time",
     "late_seller_ids": [],
-    "timeline_complete": false
+    "timeline_complete": true
   },
   "payment_analysis": {
-    "verdict": "insufficient_evidence",
-    "captured_total_brl": null,
-    "refunded_total_brl": null,
-    "refundable_total_brl": null
+    "verdict": "reconciled",
+    "captured_total_brl": 141.0,
+    "refunded_total_brl": 0.0,
+    "refundable_total_brl": 141.0
   },
   "root_cause_analysis": {
     "ranked_causes": [
       {
-        "cause_code": "INSUFFICIENT_EVIDENCE",
+        "cause_code": "VALID_SPLIT_PAYMENT",
         "rank": 1
+      },
+      {
+        "cause_code": "REFUND_FAILED",
+        "rank": 2
       }
     ],
     "responsible_parties": [
       {
-        "party_type": "unknown",
+        "party_type": "customer",
         "party_id": null
       }
     ]
   },
-  "evidence_refs": [],
+  "evidence_refs": [
+    "ev_VOp5mi6K_op59pRjPj1tdj8MdODPd1ZC",
+    "ev_koJmt63Cmgi5kpyvsfeRPQRSKEYBzQ1R",
+    "ev_xnuBYRzzzcwTJr3AcLLPxKIhptdmaINq",
+    "ev_StDNYKZB7E-BLtOMRiURgbRtJ2DEPqHg",
+    "ev_0bz5U9iO0XUD63uo7G9_DsRixCEcm3bm",
+    "ev_3KoYSgmfa9phZeUfnNJrcRExDVQYMFA_",
+    "ev_jUyoZs2h_ji9REm-FDY3QsD6iHZt5-op",
+    "ev_ugIELr6NsXodbGxBcznGEKzwtZMqHboF",
+    "ev___A6s7msmm4xjexJqEJDKopCYJAKFbef"
+  ],
   "data_conflicts": [],
   "financial_resolution": {
     "currency": "BRL",
@@ -60,20 +89,40 @@
     "refund_lines": []
   },
   "resolution_actions": [
-    "investigate_case"
+    "document_no_action"
   ],
   "claim_assessments": [
     {
       "claim_id": "claim-062-a",
-      "verdict": "insufficient_evidence",
-      "confidence": 0.3,
-      "evidence_refs": []
+      "verdict": "supported",
+      "confidence": 0.9,
+      "evidence_refs": [
+        "ev_VOp5mi6K_op59pRjPj1tdj8MdODPd1ZC",
+        "ev_koJmt63Cmgi5kpyvsfeRPQRSKEYBzQ1R",
+        "ev_xnuBYRzzzcwTJr3AcLLPxKIhptdmaINq",
+        "ev_StDNYKZB7E-BLtOMRiURgbRtJ2DEPqHg",
+        "ev_0bz5U9iO0XUD63uo7G9_DsRixCEcm3bm",
+        "ev_3KoYSgmfa9phZeUfnNJrcRExDVQYMFA_",
+        "ev_jUyoZs2h_ji9REm-FDY3QsD6iHZt5-op",
+        "ev_ugIELr6NsXodbGxBcznGEKzwtZMqHboF",
+        "ev___A6s7msmm4xjexJqEJDKopCYJAKFbef"
+      ]
     },
     {
       "claim_id": "claim-062-b",
-      "verdict": "insufficient_evidence",
-      "confidence": 0.3,
-      "evidence_refs": []
+      "verdict": "unsupported",
+      "confidence": 0.7,
+      "evidence_refs": [
+        "ev_VOp5mi6K_op59pRjPj1tdj8MdODPd1ZC",
+        "ev_koJmt63Cmgi5kpyvsfeRPQRSKEYBzQ1R",
+        "ev_xnuBYRzzzcwTJr3AcLLPxKIhptdmaINq",
+        "ev_StDNYKZB7E-BLtOMRiURgbRtJ2DEPqHg",
+        "ev_0bz5U9iO0XUD63uo7G9_DsRixCEcm3bm",
+        "ev_3KoYSgmfa9phZeUfnNJrcRExDVQYMFA_",
+        "ev_jUyoZs2h_ji9REm-FDY3QsD6iHZt5-op",
+        "ev_ugIELr6NsXodbGxBcznGEKzwtZMqHboF",
+        "ev___A6s7msmm4xjexJqEJDKopCYJAKFbef"
+      ]
     }
   ]
 }

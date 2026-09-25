@@ -40,32 +40,52 @@ async def _run(root: Path) -> None:
     trace_path.unlink(missing_ok=True)
     trace = TraceWriter(trace_path, contracts)
 
-    async with connect_gateway(settings.mcp_endpoint, settings.team_api_key, contracts) as gateway:
-        discovered_tools = await gateway.list_tools()
-        if not discovered_tools:
-            raise RuntimeError("MCP Gateway returned no tools")
-        sem = asyncio.Semaphore(5)
-        completed = 0
+    sem = asyncio.Semaphore(2)
+    completed = 0
 
-        async def _process_one(cid: str) -> None:
-            nonlocal completed
-            async with sem:
-                c_obj = case_set.cases[cid]
-                out = await solve_case(c_obj, gateway, trace)
-                contracts.validate_output(out, f"outputs/{cid}.json")
-                if out.get("case_id") != cid:
-                    raise ValueError(f"solver returned a mismatched case_id for {cid}")
-                target = output_root / f"{cid}.json"
-                temporary = target.with_suffix(".json.tmp")
-                temporary.write_text(
-                    json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-                )
-                temporary.replace(target)
-                completed += 1
-                if completed % 10 == 0 or completed == len(case_set.case_ids):
-                    print(f"Processed {completed}/{len(case_set.case_ids)} cases", flush=True)
+    for start in range(0, len(case_set.case_ids), 20):
+        batch_ids = case_set.case_ids[start : start + 20]
+        for attempt in range(3):
+            try:
+                async with connect_gateway(
+                    settings.mcp_endpoint, settings.team_api_key, contracts
+                ) as gateway:
+                    if start == 0 and attempt == 0:
+                        discovered_tools = await gateway.list_tools()
+                        if not discovered_tools:
+                            raise RuntimeError("MCP Gateway returned no tools")
 
-        await asyncio.gather(*(_process_one(cid) for cid in case_set.case_ids))
+                    async def _process_one(cid: str, gw=gateway) -> None:
+                        nonlocal completed
+                        target = output_root / f"{cid}.json"
+                        if target.exists():
+                            return
+                        async with sem:
+                            c_obj = case_set.cases[cid]
+                            out = await solve_case(c_obj, gw, trace)
+                            contracts.validate_output(out, f"outputs/{cid}.json")
+                            if out.get("case_id") != cid:
+                                raise ValueError(f"solver returned a mismatched case_id for {cid}")
+                            temporary = target.with_suffix(".json.tmp")
+                            temporary.write_text(
+                                json.dumps(out, ensure_ascii=False, indent=2) + "\n",
+                                encoding="utf-8",
+                            )
+                            temporary.replace(target)
+                            completed += 1
+                            if completed % 10 == 0 or completed == len(case_set.case_ids):
+                                print(
+                                    f"Processed {completed}/{len(case_set.case_ids)} cases",
+                                    flush=True,
+                                )
+
+                    await asyncio.gather(*(_process_one(cid) for cid in batch_ids))
+                break
+            except Exception as exc:
+                if attempt == 2:
+                    raise
+                print(f"Transient connection error on batch {start}, reconnecting: {exc}", flush=True)
+                await asyncio.sleep(1.5)
 
 
 def parser() -> argparse.ArgumentParser:

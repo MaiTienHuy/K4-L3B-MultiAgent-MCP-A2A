@@ -2,78 +2,122 @@
   "schema_version": "day09-l3b-output-v2",
   "case_id": "L3B_CASE_089",
   "assessment": {
-    "primary_issue": "insufficient_evidence",
+    "primary_issue": "unavailable_order_paid",
     "secondary_issues": [],
-    "case_status": "needs_investigation",
-    "confidence": 0.35
+    "case_status": "action_required",
+    "confidence": 0.95
   },
   "affected_entities": {
-    "order_ids": [],
-    "item_ids": [],
-    "seller_ids": [],
-    "payment_references": [],
+    "order_ids": [
+      "73628c6d02ed8f6134d9752cd7b83c2a"
+    ],
+    "item_ids": [
+      "item-73628c6d02ed"
+    ],
+    "seller_ids": [
+      "seller-73628c6d02ed"
+    ],
+    "payment_references": [
+      "credit_card:1:89.00"
+    ],
     "shipment_ids": []
   },
   "entity_resolution": {
-    "status": "not_found",
-    "resolved_order_ids": [],
+    "status": "resolved",
+    "resolved_order_ids": [
+      "73628c6d02ed8f6134d9752cd7b83c2a"
+    ],
     "rejected_candidates": [
-      "73628c6d02ed8f6134d9752cd7b83c2a",
       "candidate-089"
     ],
-    "confidence": 0.25
+    "confidence": 0.85
   },
   "customer_context": {
     "customer_unique_id": "customer-752cd7b83c2a",
-    "related_order_ids": []
+    "related_order_ids": [
+      "73628c6d02ed8f6134d9752cd7b83c2a"
+    ]
   },
   "shipment_analysis": {
-    "verdict": "insufficient_evidence",
+    "verdict": "lost",
     "late_seller_ids": [],
     "timeline_complete": false
   },
   "payment_analysis": {
-    "verdict": "insufficient_evidence",
-    "captured_total_brl": null,
-    "refunded_total_brl": null,
-    "refundable_total_brl": null
+    "verdict": "reconciled",
+    "captured_total_brl": 178.0,
+    "refunded_total_brl": 0.0,
+    "refundable_total_brl": 178.0
   },
   "root_cause_analysis": {
     "ranked_causes": [
       {
-        "cause_code": "INSUFFICIENT_EVIDENCE",
+        "cause_code": "UNAVAILABLE_ORDER_PAID",
         "rank": 1
       }
     ],
     "responsible_parties": [
       {
-        "party_type": "unknown",
-        "party_id": null
+        "party_type": "seller",
+        "party_id": "seller-73628c6d02ed"
       }
     ]
   },
-  "evidence_refs": [],
+  "evidence_refs": [
+    "ev_qTm2NfuM4mn_H6wmzmIXK73Rr4vQfteS",
+    "ev_niuxzhWEMGfAwY7K66RFXZPu6Ar4uPao",
+    "ev_o1p3GZrrJChXF1BLJA8Nw_y9j9EW1byC",
+    "ev_-RJNRGzMPec-PiwhVWgwPY8h-10qe3mz",
+    "ev_Ao7icBE9PrnjxYZPJM1o_XNaFSEk_gMJ",
+    "ev_LWvUUSrjathz7uljiRG-nXVzI3AQ9KfO",
+    "ev_S2ZRDWuIIXQ13d4p6SaEVrPcFdfhmeAz",
+    "ev_vJmz08zYBKHUBNFxzK0CDooQ6CmDi6kR"
+  ],
   "data_conflicts": [],
   "financial_resolution": {
     "currency": "BRL",
-    "recommended_refund_brl": 0.0,
-    "refund_lines": []
+    "recommended_refund_brl": 89.0,
+    "refund_lines": [
+      {
+        "reason_code": "issue_refund",
+        "amount_brl": 89.0,
+        "entity_id": "seller-73628c6d02ed"
+      }
+    ]
   },
   "resolution_actions": [
-    "investigate_case"
+    "issue_refund"
   ],
   "claim_assessments": [
     {
       "claim_id": "claim-089-a",
-      "verdict": "insufficient_evidence",
-      "confidence": 0.3,
-      "evidence_refs": []
+      "verdict": "supported",
+      "confidence": 0.9,
+      "evidence_refs": [
+        "ev_qTm2NfuM4mn_H6wmzmIXK73Rr4vQfteS",
+        "ev_niuxzhWEMGfAwY7K66RFXZPu6Ar4uPao",
+        "ev_o1p3GZrrJChXF1BLJA8Nw_y9j9EW1byC",
+        "ev_-RJNRGzMPec-PiwhVWgwPY8h-10qe3mz",
+        "ev_Ao7icBE9PrnjxYZPJM1o_XNaFSEk_gMJ",
+        "ev_LWvUUSrjathz7uljiRG-nXVzI3AQ9KfO",
+        "ev_S2ZRDWuIIXQ13d4p6SaEVrPcFdfhmeAz",
+        "ev_vJmz08zYBKHUBNFxzK0CDooQ6CmDi6kR"
+      ]
     },
     {
       "claim_id": "claim-089-b",
-      "verdict": "insufficient_evidence",
-      "confidence": 0.3,
-      "evidence_refs": []
+      "verdict": "partially_supported",
+      "confidence": 0.75,
+      "evidence_refs": [
+        "ev_qTm2NfuM4mn_H6wmzmIXK73Rr4vQfteS",
+        "ev_niuxzhWEMGfAwY7K66RFXZPu6Ar4uPao",
+        "ev_o1p3GZrrJChXF1BLJA8Nw_y9j9EW1byC",
+        "ev_-RJNRGzMPec-PiwhVWgwPY8h-10qe3mz",
+        "ev_Ao7icBE9PrnjxYZPJM1o_XNaFSEk_gMJ",
+        "ev_LWvUUSrjathz7uljiRG-nXVzI3AQ9KfO",
+        "ev_S2ZRDWuIIXQ13d4p6SaEVrPcFdfhmeAz",
+        "ev_vJmz08zYBKHUBNFxzK0CDooQ6CmDi6kR"
+      ]
     }
   ]
 }

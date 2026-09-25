@@ -2,78 +2,122 @@
   "schema_version": "day09-l3b-output-v2",
   "case_id": "L3B_CASE_039",
   "assessment": {
-    "primary_issue": "insufficient_evidence",
+    "primary_issue": "unavailable_order_paid",
     "secondary_issues": [],
-    "case_status": "needs_investigation",
-    "confidence": 0.35
+    "case_status": "action_required",
+    "confidence": 0.95
   },
   "affected_entities": {
-    "order_ids": [],
-    "item_ids": [],
-    "seller_ids": [],
-    "payment_references": [],
+    "order_ids": [
+      "103de323ece563a1012b4b6adf5a81b2"
+    ],
+    "item_ids": [
+      "item-103de323ece5"
+    ],
+    "seller_ids": [
+      "seller-103de323ece5"
+    ],
+    "payment_references": [
+      "credit_card:1:89.00"
+    ],
     "shipment_ids": []
   },
   "entity_resolution": {
-    "status": "not_found",
-    "resolved_order_ids": [],
+    "status": "resolved",
+    "resolved_order_ids": [
+      "103de323ece563a1012b4b6adf5a81b2"
+    ],
     "rejected_candidates": [
-      "103de323ece563a1012b4b6adf5a81b2",
       "candidate-039"
     ],
-    "confidence": 0.25
+    "confidence": 0.85
   },
   "customer_context": {
     "customer_unique_id": "customer-4b6adf5a81b2",
-    "related_order_ids": []
+    "related_order_ids": [
+      "103de323ece563a1012b4b6adf5a81b2"
+    ]
   },
   "shipment_analysis": {
-    "verdict": "insufficient_evidence",
+    "verdict": "lost",
     "late_seller_ids": [],
     "timeline_complete": false
   },
   "payment_analysis": {
-    "verdict": "insufficient_evidence",
-    "captured_total_brl": null,
-    "refunded_total_brl": null,
-    "refundable_total_brl": null
+    "verdict": "reconciled",
+    "captured_total_brl": 178.0,
+    "refunded_total_brl": 0.0,
+    "refundable_total_brl": 178.0
   },
   "root_cause_analysis": {
     "ranked_causes": [
       {
-        "cause_code": "INSUFFICIENT_EVIDENCE",
+        "cause_code": "UNAVAILABLE_ORDER_PAID",
         "rank": 1
       }
     ],
     "responsible_parties": [
       {
-        "party_type": "unknown",
-        "party_id": null
+        "party_type": "seller",
+        "party_id": "seller-103de323ece5"
       }
     ]
   },
-  "evidence_refs": [],
+  "evidence_refs": [
+    "ev_umYGvnwf1aPCwZeuljA34kXt-DWxMlR-",
+    "ev_vJ4CLzCnLklqmZyEQxwMzSg9iYuSlfs9",
+    "ev_IrAcmFaZsYqNwEpj8E-fwt9IVyWUtAx9",
+    "ev_50LS-K0lWAxb2MHdkzve0K3nx17V3XXG",
+    "ev_3mRXdDq_YMko3KD8sGvkZsWFh-7H40Hg",
+    "ev_CIFxmW9gPibiqK1jSkO1ldHSNb_pDDZ3",
+    "ev_vdglQ-Rdcp-o2qNWNnlQWunXO5LwwSDZ",
+    "ev_fYdccavzBpxgRytH61S_MFVMau5SWoka"
+  ],
   "data_conflicts": [],
   "financial_resolution": {
     "currency": "BRL",
-    "recommended_refund_brl": 0.0,
-    "refund_lines": []
+    "recommended_refund_brl": 89.0,
+    "refund_lines": [
+      {
+        "reason_code": "issue_refund",
+        "amount_brl": 89.0,
+        "entity_id": "seller-103de323ece5"
+      }
+    ]
   },
   "resolution_actions": [
-    "investigate_case"
+    "issue_refund"
   ],
   "claim_assessments": [
     {
       "claim_id": "claim-039-a",
-      "verdict": "insufficient_evidence",
-      "confidence": 0.3,
-      "evidence_refs": []
+      "verdict": "supported",
+      "confidence": 0.9,
+      "evidence_refs": [
+        "ev_umYGvnwf1aPCwZeuljA34kXt-DWxMlR-",
+        "ev_vJ4CLzCnLklqmZyEQxwMzSg9iYuSlfs9",
+        "ev_IrAcmFaZsYqNwEpj8E-fwt9IVyWUtAx9",
+        "ev_50LS-K0lWAxb2MHdkzve0K3nx17V3XXG",
+        "ev_3mRXdDq_YMko3KD8sGvkZsWFh-7H40Hg",
+        "ev_CIFxmW9gPibiqK1jSkO1ldHSNb_pDDZ3",
+        "ev_vdglQ-Rdcp-o2qNWNnlQWunXO5LwwSDZ",
+        "ev_fYdccavzBpxgRytH61S_MFVMau5SWoka"
+      ]
     },
     {
       "claim_id": "claim-039-b",
-      "verdict": "insufficient_evidence",
-      "confidence": 0.3,
-      "evidence_refs": []
+      "verdict": "partially_supported",
+      "confidence": 0.75,
+      "evidence_refs": [
+        "ev_umYGvnwf1aPCwZeuljA34kXt-DWxMlR-",
+        "ev_vJ4CLzCnLklqmZyEQxwMzSg9iYuSlfs9",
+        "ev_IrAcmFaZsYqNwEpj8E-fwt9IVyWUtAx9",
+        "ev_50LS-K0lWAxb2MHdkzve0K3nx17V3XXG",
+        "ev_3mRXdDq_YMko3KD8sGvkZsWFh-7H40Hg",
+        "ev_CIFxmW9gPibiqK1jSkO1ldHSNb_pDDZ3",
+        "ev_vdglQ-Rdcp-o2qNWNnlQWunXO5LwwSDZ",
+        "ev_fYdccavzBpxgRytH61S_MFVMau5SWoka"
+      ]
     }
   ]
 }
