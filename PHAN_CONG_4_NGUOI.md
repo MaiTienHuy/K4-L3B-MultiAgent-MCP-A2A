@@ -1,4 +1,4 @@
-﻿# Phân công 4 người — Hoàn thành trong 1 ngày (240 phút)
+# Phân công 4 người — Hoàn thành trong 1 ngày (240 phút)
 
 > Bám sát 6 pha của đề bài. Mỗi người có việc riêng trong từng pha, hội tụ tại điểm sync cuối mỗi pha chính.
 
@@ -34,7 +34,10 @@
 - [ ] Đọc nhanh `contracts/schemas/` — nắm tên field output của phần mình phụ trách
 
 ### Sync chốt cuối Pha 1 (5 phút)
-- [ ] MTH chia tool list: entity/order/shipment/payment/policy → ai dùng tool nào
+- [x] MTH chia tool list (kết quả `day09 mcp-tools`):
+  - **Lê Việt Hoàng** (Entity/Customer): `get_order`, `get_customer_history`
+  - **Trịnh Xuân Huy** (Order/Shipment): `get_order`, `get_order_items`, `get_shipment_summary`, `get_sellers`, `get_product_context`
+  - **Hoàng Ngọc Đức** (Payment/Policy): `get_order_payments`, `get_payment_timeline`, `get_refund_timeline`, `get_policy`
 - [ ] Thống nhất kiểu dữ liệu trả về của từng specialist agent
 
 ---
@@ -62,13 +65,13 @@
 - [ ] Đọc `l3b-output-v2.schema.json` → ghi lại các field liên quan entity/customer
 - [ ] Chốt input nhận từ coordinator: raw case dict
 - [ ] Chốt output trả về: `{ entity_id, customer_id, customer_unique_id, confidence, evidence_refs, ambiguous: bool }`
-- [ ] Liệt kê tool cần gọi: `find_order`, `get_customer`, ... (từ tool list MTH chia)
+- [x] Liệt kê tool cần gọi: `get_order`, `get_customer_history`
 
 ### Trịnh Xuân Huy *(Order/Shipment Agent design)*
 - [ ] Đọc `l3b-output-v2.schema.json` → ghi lại các field order, shipment, timeline
 - [ ] Chốt input: `entity_id` + `case` từ coordinator
 - [ ] Chốt output: `{ order_data, shipment_timeline, delivery_status, conflicts, evidence_refs }`
-- [ ] Liệt kê tool cần gọi: `get_order`, `get_shipment`, `get_product`, ...
+- [x] Liệt kê tool cần gọi: `get_order`, `get_order_items`, `get_shipment_summary`, `get_sellers`, `get_product_context`
 
 ### Hoàng Ngọc Đức *(Payment + Policy + Verifier design)*
 - [ ] Đọc `l3b-output-v2.schema.json` → field payment, refund, resolution, confidence
