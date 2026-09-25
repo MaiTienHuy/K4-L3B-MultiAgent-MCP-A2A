@@ -44,20 +44,28 @@ async def _run(root: Path) -> None:
         discovered_tools = await gateway.list_tools()
         if not discovered_tools:
             raise RuntimeError("MCP Gateway returned no tools")
-        for case_id in case_set.case_ids:
-            case = case_set.cases[case_id]
-            trace.emit(case_id=case_id, event_type="case_received", actor="coordinator")
-            output = await solve_case(case, gateway, trace)
-            contracts.validate_output(output, f"outputs/{case_id}.json")
-            if output.get("case_id") != case_id:
-                raise ValueError(f"solver returned a mismatched case_id for {case_id}")
-            target = output_root / f"{case_id}.json"
-            temporary = target.with_suffix(".json.tmp")
-            temporary.write_text(
-                json.dumps(output, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-            )
-            temporary.replace(target)
-            trace.emit(case_id=case_id, event_type="case_finalized", actor="coordinator")
+        sem = asyncio.Semaphore(5)
+        completed = 0
+
+        async def _process_one(cid: str) -> None:
+            nonlocal completed
+            async with sem:
+                c_obj = case_set.cases[cid]
+                out = await solve_case(c_obj, gateway, trace)
+                contracts.validate_output(out, f"outputs/{cid}.json")
+                if out.get("case_id") != cid:
+                    raise ValueError(f"solver returned a mismatched case_id for {cid}")
+                target = output_root / f"{cid}.json"
+                temporary = target.with_suffix(".json.tmp")
+                temporary.write_text(
+                    json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+                )
+                temporary.replace(target)
+                completed += 1
+                if completed % 10 == 0 or completed == len(case_set.case_ids):
+                    print(f"Processed {completed}/{len(case_set.case_ids)} cases", flush=True)
+
+        await asyncio.gather(*(_process_one(cid) for cid in case_set.case_ids))
 
 
 def parser() -> argparse.ArgumentParser:

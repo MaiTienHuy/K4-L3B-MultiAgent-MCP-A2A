@@ -119,14 +119,14 @@
 - [ ] Kiểm thử fixture: exact ID đúng, exact ID sai, nhiều candidate, không tìm thấy
 
 ### Trịnh Xuân Huy *(Order + Shipment Agent)*
-- [ ] Triển khai `order_shipment.py`:
+- [x] Triển khai `order_shipment.py`:
   - Đọc order/item/product qua MCP
   - Dựng timeline từ mốc thực tế, giữ nguyên dữ liệu thiếu
   - So sánh expected delivery vs actual delivery
   - Phân tích: giao trễ, chưa giao, hủy đơn — phải có evidence
   - Phát hiện conflict trạng thái đơn vs shipment
-- [ ] Ghi `tool_result_consumed` sau mỗi MCP call
-- [ ] Kiểm thử fixture: giao đúng hạn, trễ hạn, thiếu date, hủy đơn, conflict
+- [x] Ghi `tool_result_consumed` sau mỗi MCP call
+- [x] Kiểm thử fixture: giao đúng hạn, trễ hạn, thiếu date, hủy đơn, conflict
 
 ### Hoàng Ngọc Đức *(Payment Agent)*
 - [ ] Triển khai `payment_policy.py` — phần Payment:

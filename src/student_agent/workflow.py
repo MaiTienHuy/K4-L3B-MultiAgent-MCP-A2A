@@ -1,4 +1,4 @@
-﻿"""L3B Coordinator Workflow --- Mai Tien Huy phu trach.
+"""L3B Coordinator Workflow --- Mai Tien Huy phu trach.
 
 Orchestrates all specialist agents:
   1. entity resolution
@@ -53,8 +53,13 @@ class _GatewayWithCache:
                 return result
             except RuntimeError as exc:
                 msg = str(exc)
-                if "403" in msg or "401" in msg or "forbidden" in msg.lower():
-                    raise  # do not retry auth errors
+                if (
+                    "403" in msg
+                    or "401" in msg
+                    or "forbidden" in msg.lower()
+                    or "error executing tool" in msg.lower()
+                ):
+                    raise  # do not retry auth or tool-not-found errors
                 last_exc = exc
                 if attempt < 2:
                     await asyncio.sleep(0.3 * (attempt + 1))
