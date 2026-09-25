@@ -1,4 +1,4 @@
-﻿# L3B Architecture Record
+# L3B Architecture Record
 
 Team phai cap nhat tai lieu nay cung source. Muc tieu la mo ta quyet dinh co the kiem chung, khong ghi prompt bi mat hoac chain-of-thought.
 
@@ -35,10 +35,10 @@ All results --> [Policy Engine] --> policy_result (primary_issue, refund)       
 
 | Actor | Input | Trach nhiem | Tool permission | Output/handoff |
 | --- | --- | --- | --- | --- |
-| Entity/Customer | raw case dict | Resolve order ID, fetch customer context, detect ambiguity | get_order, get_customer | EntityResult -> Coordinator |
+| Entity/Customer | raw case dict | Resolve order ID, fetch customer context, detect ambiguity | get_order, get_customer_history | EntityResult -> Coordinator |
 | Coordinator | case + entity_result | Dispatch parallel agents, collect results, call policy, build output | none (delegates) | final output dict |
-| Order/Shipment | entity_result + case | Fetch order details, shipment timeline, detect delays & conflicts | get_order, get_shipment, get_product | OrderShipmentResult -> Coordinator |
-| Payment | entity_result + case | Reconcile payments, check refund status, sum BRL amounts | get_payment, get_refund, get_order (payment fields) | PaymentResult -> Coordinator |
+| Order/Shipment | entity_result + case | Fetch order details, shipment timeline, detect delays & conflicts | get_order, get_order_items, get_shipment_summary, get_sellers, get_product_context | OrderShipmentResult -> Coordinator |
+| Payment | entity_result + case | Reconcile payments, check refund status, sum BRL amounts | get_order_payments, get_payment_timeline, get_refund_timeline, get_policy | PaymentResult -> Coordinator |
 | Policy Engine | all specialist results | Map evidence -> primary_issue, responsible_parties, refund recommendation | none (pure logic) | PolicyResult -> Verifier |
 | Verifier | all results + policy | Cross-field consistency, confidence calibration [0.0-1.0] | none (pure logic) | {confidence, verification_issues} |
 
