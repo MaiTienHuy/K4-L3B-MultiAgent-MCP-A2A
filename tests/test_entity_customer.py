@@ -335,13 +335,20 @@ def test_entity_result_feeds_coordinator_output_builder(tmp_path: Path) -> None:
     result = asyncio.run(entity_customer.run(case, gateway, trace))
 
     shipment = SimpleNamespace(
-        verdict="on_time", late_seller_ids=[], timeline_complete=True, evidence_refs=[]
+        verdict="on_time",
+        late_seller_ids=[],
+        timeline_complete=True,
+        item_ids=["item-a"],
+        seller_ids=["seller-a"],
+        shipment_ids=[],
+        evidence_refs=[],
     )
     payment = SimpleNamespace(
         verdict="reconciled",
         captured_total_brl=100.0,
         refunded_total_brl=0.0,
         refundable_total_brl=0.0,
+        payment_references=["credit_card:1:100.00"],
         evidence_refs=[],
     )
     policy = SimpleNamespace(

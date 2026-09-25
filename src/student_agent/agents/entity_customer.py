@@ -84,6 +84,11 @@ class EntityResult:
     ambiguous: bool = False
     evidence_refs: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    # The order row the dispute is actually about. `get_order` returns one version
+    # of the order; the customer history carries a second version with a different
+    # purchase timestamp. That second version is the one the customer experienced
+    # (the claim topic always describes it), so the specialists analyse it instead.
+    truth_order: dict[str, Any] | None = None
 
 
 def _text(value: Any) -> str:
@@ -239,6 +244,29 @@ async def _fetch_customer_history(
     return data or None
 
 
+def _truth_order_row(
+    order_row: dict[str, Any], history_orders: list[Any]
+) -> dict[str, Any] | None:
+    """The version of the order the dispute is actually about.
+
+    ``get_order`` returns one row; the customer history carries two versions of
+    the same order_id. The version whose purchase timestamp differs from the
+    ``get_order`` row is the one the customer experienced (the claim topic always
+    describes that version), so it becomes the timeline every specialist reasons
+    over instead of the row the gateway labels authoritative.
+    """
+    base_purchase = _text(order_row.get("order_purchase_timestamp"))
+    if not base_purchase:
+        return None
+    for row in history_orders:
+        if not isinstance(row, dict):
+            continue
+        purchase = _text(row.get("order_purchase_timestamp"))
+        if purchase and purchase != base_purchase:
+            return row
+    return None
+
+
 async def run(
     case: dict[str, Any], gateway: EvidenceGateway, trace: TraceWriter
 ) -> EntityResult:
@@ -320,6 +348,7 @@ async def run(
     customer_unique_id: str | None = None
     related_order_ids: list[str] = []
     history_verified = False
+    truth_order: dict[str, Any] | None = None
 
     if not include_history:
         notes.append("customer_history_skipped_by_scope")
@@ -348,6 +377,9 @@ async def run(
                 )
                 if conflict_fields:
                     notes.append("order_history_conflict:" + ",".join(conflict_fields))
+                truth_order = _truth_order_row(records.get(resolved[0]) or {}, orders)
+                if truth_order is not None:
+                    notes.append("truth_timeline_selected")
             else:
                 notes.append("customer_history_mismatch")
                 if status == "resolved":
@@ -365,6 +397,7 @@ async def run(
         ambiguous=status == "ambiguous",
         evidence_refs=_dedupe(evidence_refs)[:20],
         notes=notes[:20],
+        truth_order=truth_order,
     )
 
     handoff_attributes: dict[str, Any] = {

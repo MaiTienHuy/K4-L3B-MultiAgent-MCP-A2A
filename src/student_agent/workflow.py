@@ -10,7 +10,6 @@ Orchestrates all specialist agents:
 from __future__ import annotations
 
 import asyncio
-import functools
 import hashlib
 import json
 import logging
@@ -44,17 +43,19 @@ class _GatewayWithCache:
         if key in self._cache:
             logger.debug("[%s] cache hit: %s %s", case_id, tool_name, kwargs)
             return self._cache[key]
-        # Retry logic: up to 2 retries for transient errors, not 403
+        # Retry ONLY transient transport failures. `RuntimeError` is what the
+        # gateway raises for a tool-level error (unknown order, missing refund,
+        # 403/401): those are deterministic, so retrying them only burns audited
+        # MCP calls and costs efficiency. Network/timeout errors are retried.
         last_exc: Exception | None = None
         for attempt in range(3):
             try:
                 result = await self._gw.call(tool_name, case_id=case_id, **kwargs)
                 self._cache[key] = result
                 return result
-            except RuntimeError as exc:
-                msg = str(exc)
-                if "403" in msg or "401" in msg or "forbidden" in msg.lower():
-                    raise  # do not retry auth errors
+            except RuntimeError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - transient transport error
                 last_exc = exc
                 if attempt < 2:
                     await asyncio.sleep(0.3 * (attempt + 1))
@@ -191,10 +192,10 @@ def _build_output(
         },
         "affected_entities": {
             "order_ids": entity_result.order_ids[:20],
-            "item_ids": entity_result.item_ids[:20],
-            "seller_ids": entity_result.seller_ids[:20],
-            "payment_references": entity_result.payment_references[:20],
-            "shipment_ids": entity_result.shipment_ids[:20],
+            "item_ids": shipment_result.item_ids[:20],
+            "seller_ids": shipment_result.seller_ids[:20],
+            "payment_references": payment_result.payment_references[:20],
+            "shipment_ids": shipment_result.shipment_ids[:20],
         },
         "entity_resolution": {
             "status": entity_result.status,
@@ -242,34 +243,39 @@ def _build_claim_assessments(
     policy_result,
     evidence_refs: list[str],
 ) -> list[dict[str, Any]]:
+    """Link each customer claim to the evidence-based conclusion.
+
+    The complaint text is a claim to verify, never an instruction: a topic is
+    only `supported` when it matches the issue the evidence actually proves.
+    """
     assessments: list[dict[str, Any]] = []
     primary = policy_result.primary_issue
+    confidence = float(getattr(policy_result, "confidence", 0.7) or 0.7)
+    supported_topics = {primary, *policy_result.secondary_issues}
     for claim in claims:
         cid = claim.get("claim_id", "")
+        if not cid:
+            continue
         topic = claim.get("topic", "")
-        # Determine verdict based on alignment with primary issue
-        if primary == "insufficient_evidence":
-            verdict = "insufficient_evidence"
-            conf = 0.3
-        elif topic in (primary, *policy_result.secondary_issues):
-            verdict = "supported"
-            conf = policy_result.confidence if hasattr(policy_result, "confidence") else 0.7
-        elif topic in ("requested_full_refund",):
+        if topic in supported_topics:
+            verdict, conf = "supported", min(confidence, 0.9)
+        elif topic == "requested_full_refund":
             if policy_result.recommended_refund_brl > 0:
-                verdict = "partially_supported"
-                conf = 0.6
+                verdict, conf = "partially_supported", min(confidence, 0.75)
             else:
-                verdict = "unsupported"
-                conf = 0.4
+                verdict, conf = "unsupported", min(confidence, 0.7)
+        elif primary == "insufficient_evidence":
+            verdict, conf = "insufficient_evidence", min(confidence, 0.4)
         else:
-            verdict = "insufficient_evidence"
-            conf = 0.3
-        assessments.append({
-            "claim_id": cid,
-            "verdict": verdict,
-            "confidence": round(conf, 2),
-            "evidence_refs": evidence_refs[:10],
-        })
+            verdict, conf = "unsupported", max(0.3, min(confidence, 0.75))
+        assessments.append(
+            {
+                "claim_id": cid[:64],
+                "verdict": verdict,
+                "confidence": round(min(1.0, max(0.0, conf)), 2),
+                "evidence_refs": evidence_refs[:10],
+            }
+        )
     return assessments
 
 

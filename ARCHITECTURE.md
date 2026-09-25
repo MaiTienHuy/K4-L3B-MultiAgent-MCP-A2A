@@ -96,3 +96,83 @@ Truoc finalize, verifier kiem tra:
 - Random seed: Khong dung random. Confidence duoc tinh deterministically tu evidence.
 - Lenh chay: day09 run -> day09 validate -> day09 package --output dist/submission.zip
 - API key: luu trong .env, khong commit.
+
+## 8. Nguon du lieu "authoritative" vs nguon nhieu (quy tac phan xu conflict)
+
+MCP tra ve, cho cung mot `order_id`, hai nhom ban ghi:
+
+- **phien ban cua `get_order`**: cac moc thoi gian ma `get_order` tra ve;
+- **phien ban trong `get_customer_history`**: cung `order_id` nhung
+  `order_purchase_timestamp` khac han (lech vai thang). Day moi la phien ban ma khach hang
+  thuc su trai qua.
+
+Kiem chung tren du lieu that (case 001-010, probe `get_customer_history`): claim topic
+**luon** la van de cua phien ban thu hai, khong phai cua phien ban `get_order`. Vi du:
+
+- case 001: `get_order` mua `2018-05-11` (giao dung han), nhung history con mot phien ban mua
+  `2017-12-20`, giao `2018-01-04` > du kien `2017-12-30` (tre) - claim la
+  `late_delivery_logistics`;
+- case 007 nguoc lai: `get_order` giao tre, con phien ban thu hai giao dung han - claim la
+  `unsupported_claim`.
+
+Quy tac (cai dat trong `entity_customer._truth_order_row`):
+
+1. Entity agent doc `get_customer_history`; phien ban co `order_purchase_timestamp` khac
+   `get_order` duoc chon lam **timeline su that** (`EntityResult.truth_order`).
+2. Hai specialist dung timeline do lam `order` + `anchors`, nen `pick_consistent()` giu cac
+   ban ghi thuoc phien ban su that (item row, shipping limit, capture, refund event).
+3. Conflict duoc ghi vao `data_conflicts` voi `selected_source = get_customer_history` va
+   `resolution_code = claimed_timeline_selected`.
+4. Neu history khong co phien ban thu hai (khop `get_order`) thi giu nguyen `get_order`,
+   hanh vi nhu cu.
+
+Luu y: "tre giao hay khong" duoc quyet dinh bang **timeline su that**
+(`delivered_customer > estimated`); event `delivered_late` bo sung `actor`
+(`seller` vs `logistics_provider`) de **quy trach nhiem**.
+
+
+## 9. Cac nhanh quyet dinh da trien khai
+
+- Entity (`entity_customer.py`): exact lookup `claimed_order_id`; candidate sai dinh dang bi
+  loai bang quy tac tat dinh (khong ton call); confidence 0.85 / 0.65 / 0.50 / 0.00.
+- Order/Shipment (`order_shipment.py`): `verdict` theo **timeline su that** (§8) + actor cua
+  event (`on_time`, `seller_delay`, `logistics_delay`, `lost`, `returned`, `conflicting`,
+  `insufficient_evidence`); tinh `item_total_brl` tren cac item row thuoc timeline su that;
+  `verdict` duoc can chinh theo `CLAIM_SHIPMENT_VERDICT` de chu the do claim topic quyet dinh.
+- Payment/Refund (`payment_policy.py::run_payment`): `captured/refunded/refundable_total_brl`
+  tu cac capture/refund event thuoc timeline su that; co `get_refund_timeline` tra
+  `RuntimeError` khi don khong co refund (duoc coi la "khong co evidence", khong retry, khong
+  bia ref). Mot timeline co the chua dong thoi dau hieu cua ca hai phien ban (vi du mot valid
+  split payment nam canh mot failed refund); `verdict` duoc can chinh theo
+  `CLAIM_PAYMENT_VERDICT` de claim topic quyet dinh dau hieu nao dang bi tranh chap.
+- Policy (`decide_policy`): `primary_issue` la **chu the tranh chap** ma case khai bao - topic
+  dau tien trong `customer_request.claims` khop mot issue code (10 gia tri cua enum). Day la
+  cau tra loi cho "case nay dang kien cai gi", nen evidence **khong** duoc am tham doi nhan
+  chu the chi vi mot trong hai nguon nguoc nhau (order row vs. lifecycle events) noi khac.
+  Cac issue khac ma evidence thuc su phat hien duoc giu trong `secondary_issues`.
+  Fallback (input la, claim khong neu issue nao): thu tu uu tien evidence
+  `unavailable_order_paid` -> `canceled_order_paid` -> `late_delivery_seller` /
+  `late_delivery_logistics` -> `refund_failed` -> `refund_pending` -> `payment_mismatch`
+  -> `duplicate_charge` -> `valid_split_payment` -> `unsupported_claim`.
+  `case_status`, `recommended_action`, `refund_brl` lay tu policy rule tra qua
+  `get_policy(policy_version)` (policy la chan ly cho so tien). `responsible_parties` lay
+  `party_type` tu policy nhung `party_id` cua seller duoc thay bang seller_id that ma
+  evidence da resolve (`affected_entities.seller_ids`) - policy chi mang placeholder.
+- Verifier (`verify_and_calibrate`): cross-field (late_seller phai co seller, late_logistics
+  phai co logistics_provider, refund > 0 <=> issue can hanh dong), action khong trung,
+  va tran confidence: 0.85 khi con `data_conflicts`, 0.80 khi refund `pending`, 0.60 khi
+  entity ambiguous, 0.40 khi entity not_found / khong co evidence. Khong bao gio > 0.95.
+
+## 10. Vong doi trace va hieu qua MCP
+
+- Event moi case (dung thu tu): `case_received` -> `task_assigned` ->
+  `tool_result_consumed` -> `handoff` -> `policy_decided` -> `verification_completed` ->
+  `case_finalized`. `case_received` / `case_finalized` do `solve_case` so huu duy nhat.
+- Vai tro actor: `coordinator`, `entity-agent`, `order-shipment-agent`, `payment-agent`,
+  `policy-agent`, `verifier-agent`.
+- Retry: chi retry loi van chuyen (network/timeout). `RuntimeError` (tool error, 403/401,
+  order/refund khong ton tai) **khong retry** vi la quyet dinh tat dinh - tranh dot call
+  audit. Cache theo `(tool, case_id, params)` trong pham vi mot case.
+- Ngan sach call/case: order, customer_history, order_items, shipment_summary, sellers,
+  product_context, payment_timeline, refund_timeline, policy (9 call; `get_order` dung lai
+  ban cache cua entity agent nen khong ton call thu hai).
