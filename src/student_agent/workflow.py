@@ -1,4 +1,4 @@
-﻿"""L3B Coordinator Workflow --- Mai Tien Huy phu trach.
+"""L3B Coordinator Workflow --- Mai Tien Huy phu trach.
 
 Orchestrates all specialist agents:
   1. entity resolution

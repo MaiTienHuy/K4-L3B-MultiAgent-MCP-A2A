@@ -19,8 +19,26 @@ def _root(value: str) -> Path:
     return Path(value).resolve()
 
 
+def _ensure_active_run(settings: Settings) -> None:
+    try:
+        import httpx2
+
+        endpoint_origin = "/".join(settings.mcp_endpoint.split("/")[:3])
+        client = httpx2.Client(
+            headers={
+                "Authorization": f"Bearer {settings.team_api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=10.0,
+        )
+        client.post(f"{endpoint_origin}/api/v2/runs", json={"variant_id": "l3b"})
+    except Exception:
+        pass
+
+
 async def _show_tools(root: Path) -> None:
     settings = Settings.load(root)
+    _ensure_active_run(settings)
     contracts = Contracts(root / "contracts" / "schemas")
     async with connect_gateway(settings.mcp_endpoint, settings.team_api_key, contracts) as gateway:
         for tool in await gateway.list_tools():
@@ -29,6 +47,7 @@ async def _show_tools(root: Path) -> None:
 
 async def _run(root: Path) -> None:
     settings = Settings.load(root)
+    _ensure_active_run(settings)
     case_set = load_case_set(root)
     contracts = Contracts(root / "contracts" / "schemas")
     output_root = root / "outputs"
