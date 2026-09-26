@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from ..mcp_gateway import EvidenceGateway
+from ..policy_data import EC_POLICY_RULES
 from ..temporal import as_float, order_anchors, pick_consistent
 from ..trace import TraceWriter
 
@@ -46,6 +47,54 @@ CURRENCY = "BRL"
 # Policy nao cung duoc cong bo qua MCP (`get_policy`) nen chi can mot gia tri
 # du phong khi tool that bai.
 FALLBACK_POLICY_VERSION = "EC_POLICY_V2"
+
+
+def local_policy(policy_version: str) -> dict[str, Any] | None:
+    """Return the bundled public rulebook for `policy_version`, or ``None``.
+
+    `get_policy` exposes a public, static rule table, so re-querying it for every
+    case only spends audited MCP budget (efficiency) without adding case-scoped
+    evidence. A version this table does not know returns ``None`` so the caller
+    falls back to the MCP tool instead of guessing the rules.
+    """
+    rules = EC_POLICY_RULES.get(policy_version)
+    if not isinstance(rules, dict):
+        return None
+    return {"currency": CURRENCY, "policy_version": policy_version, "rules": rules}
+
+
+# ---------------------------------------------------------------------------
+# Per-issue tool routing (efficiency without losing required evidence)
+# ---------------------------------------------------------------------------
+#
+# `refunded_total_brl` / `refund_status` only carry information when a refund
+# actually exists, i.e. for the money-facing issues. For a late-delivery or an
+# unsupported claim the correct answer is "no refund" (0.0), so calling
+# `get_refund_timeline` there just spends audited MCP budget without adding a
+# required evidence group.
+REFUND_RELEVANT_ISSUES = frozenset(
+    {
+        "canceled_order_paid",
+        "unavailable_order_paid",
+        "payment_mismatch",
+        "duplicate_charge",
+        "valid_split_payment",
+        "refund_pending",
+        "refund_failed",
+    }
+)
+
+
+def needs_refund_evidence(case: dict[str, Any]) -> bool:
+    """True when the case subject can carry a refund timeline.
+
+    An unrecognised subject keeps the call (never drop evidence we cannot
+    reason about).
+    """
+    issue = claim_primary_issue(case)
+    if issue is None:
+        return True
+    return issue in REFUND_RELEVANT_ISSUES
 
 
 def _text(value: Any) -> str:
@@ -767,10 +816,14 @@ async def run_payment(
             result.has_mismatch_event = True
     result.in_window_amounts = captures
 
-    refund_data = await _consume(
-        gateway, case_id, TOOL_REFUND_TIMELINE, trace, result.evidence_refs, order_id=order_id
-    )
-    refund_data = refund_data if isinstance(refund_data, dict) else {}
+    refund_data: dict[str, Any] = {}
+    if needs_refund_evidence(case):
+        refund_data = await _consume(
+            gateway, case_id, TOOL_REFUND_TIMELINE, trace, result.evidence_refs, order_id=order_id
+        )
+        refund_data = refund_data if isinstance(refund_data, dict) else {}
+    else:
+        result.notes.append("refund_timeline_skipped_by_issue")
     refund_events = pick_consistent(_rows(refund_data.get("events")), anchors)
     result.refund_events = refund_events
     for event in refund_events:
@@ -781,9 +834,19 @@ async def run_payment(
                 result.refund_status = status
                 result.refund_amount_brl = as_float(event.get("amount_brl"))
 
+    # `get_policy` is audited per case, so its envelope (and evidence_ref) is the
+    # case-scoped evidence for the money decision. The bundled rulebook is only a
+    # fallback when the call itself fails.
     policy_data = await _consume(
-        gateway, case_id, TOOL_POLICY, trace, result.evidence_refs, policy_version=policy_version
+        gateway,
+        case_id,
+        TOOL_POLICY,
+        trace,
+        result.evidence_refs,
+        policy_version=policy_version,
     )
+    if policy_data is None:
+        policy_data = local_policy(policy_version)
     policy_data = policy_data if isinstance(policy_data, dict) else {}
     rules = policy_data.get("rules")
     result.policy_rules = rules if isinstance(rules, dict) else {}

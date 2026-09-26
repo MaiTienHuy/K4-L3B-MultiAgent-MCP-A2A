@@ -37,8 +37,8 @@ All results --> [Policy Engine] --> policy_result (primary_issue, refund)       
 | --- | --- | --- | --- | --- |
 | Entity/Customer | raw case dict | Resolve order ID, fetch customer context, detect ambiguity | get_order, get_customer_history | EntityResult -> Coordinator |
 | Coordinator | case + entity_result | Dispatch parallel agents, collect results, call policy, build output | none (delegates) | final output dict |
-| Order/Shipment | entity_result + case | Fetch order details, shipment timeline, detect delays & conflicts | get_order, get_order_items, get_shipment_summary, get_sellers, get_product_context | OrderShipmentResult -> Coordinator |
-| Payment | entity_result + case | Reconcile payments, check refund status, sum BRL amounts | get_order_payments, get_payment_timeline, get_refund_timeline, get_policy | PaymentResult -> Coordinator |
+| Order/Shipment | entity_result + case | Fetch order details, item/seller rows, shipment timeline, detect delays & conflicts | get_order, get_order_items, get_shipment_summary | OrderShipmentResult -> Coordinator |
+| Payment | entity_result + case | Reconcile payments, check refund status, sum BRL amounts | get_payment_timeline, get_refund_timeline, get_policy (fallback) | PaymentResult -> Coordinator |
 | Policy Engine | all specialist results | Map evidence -> primary_issue, responsible_parties, refund recommendation | none (pure logic) | PolicyResult -> Verifier |
 | Verifier | all results + policy | Cross-field consistency, confidence calibration [0.0-1.0] | none (pure logic) | {confidence, verification_issues} |
 
@@ -155,7 +155,8 @@ Luu y: "tre giao hay khong" duoc quyet dinh bang **timeline su that**
   `late_delivery_logistics` -> `refund_failed` -> `refund_pending` -> `payment_mismatch`
   -> `duplicate_charge` -> `valid_split_payment` -> `unsupported_claim`.
   `case_status`, `recommended_action`, `refund_brl` lay tu policy rule tra qua
-  `get_policy(policy_version)` (policy la chan ly cho so tien). `responsible_parties` lay
+  `get_policy(policy_version)` (goi that de co evidence_ref theo case; rulebook
+  EC_POLICY_V2 trong `policy_data.py` chi la fallback). `responsible_parties` lay
   `party_type` tu policy nhung `party_id` cua seller duoc thay bang seller_id that ma
   evidence da resolve (`affected_entities.seller_ids`) - policy chi mang placeholder.
 - Verifier (`verify_and_calibrate`): cross-field (late_seller phai co seller, late_logistics
@@ -173,6 +174,11 @@ Luu y: "tre giao hay khong" duoc quyet dinh bang **timeline su that**
 - Retry: chi retry loi van chuyen (network/timeout). `RuntimeError` (tool error, 403/401,
   order/refund khong ton tai) **khong retry** vi la quyet dinh tat dinh - tranh dot call
   audit. Cache theo `(tool, case_id, params)` trong pham vi mot case.
-- Ngan sach call/case: order, customer_history, order_items, shipment_summary, sellers,
-  product_context, payment_timeline, refund_timeline, policy (9 call; `get_order` dung lai
-  ban cache cua entity agent nen khong ton call thu hai).
+- Ngan sach call/case: order, customer_history, order_items, shipment_summary,
+  payment_timeline, policy (6 call; `get_order` dung lai ban cache cua entity agent nen
+  khong ton call thu hai) + `get_refund_timeline` chi voi issue co tien/hoan tien
+  (`REFUND_RELEVANT_ISSUES`, 7 call; late-delivery / unsupported-claim bo qua vi dap an
+  dung la "khong co refund"). `get_sellers` khong goi vi `get_order_items` da tra
+  `seller_id`; `get_product_context` khong goi vi output khong dung product. `get_policy`
+  goi that de co `evidence_ref` theo case, rulebook EC_POLICY_V2 trong `policy_data.py`
+  chi la fallback khi call that bai.

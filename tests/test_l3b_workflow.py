@@ -39,10 +39,10 @@ DOMAINS = {
     "get_customer_history": "customer",
     "get_order_items": "item",
     "get_shipment_summary": "shipment",
-    "get_sellers": "seller",
-    "get_product_context": "product",
     "get_payment_timeline": "payment",
     "get_refund_timeline": "refund",
+    # `get_policy` is served locally from `policy_data.EC_POLICY_RULES`; the MCP
+    # tool is kept as a fallback for a policy_version the bundle does not know.
     "get_policy": "policy",
 }
 
@@ -291,23 +291,6 @@ def _payloads(
         "get_customer_history": _history(),
         "get_order_items": _items(),
         "get_shipment_summary": shipment or _shipment(),
-        "get_sellers": [
-            {
-                "seller_id": SELLER,
-                "seller_zip_code_prefix": "01001",
-                "seller_city": "sao_paulo",
-                "seller_state": "SP",
-            }
-        ],
-        "get_product_context": [
-            {
-                "order_item_id": "item-a",
-                "product_id": "product-a",
-                "seller_id": SELLER,
-                "product": {"product_id": "product-a", "product_category_name": "utilidades"},
-                "category_name_english": "housewares",
-            }
-        ],
         "get_payment_timeline": timeline or _timeline(),
         "get_policy": {"currency": "BRL", "policy_version": "EC_POLICY_V2", "rules": POLICY_RULES},
     }
@@ -370,7 +353,13 @@ def test_lifecycle_events_and_actor_collaboration(tmp_path: Path) -> None:
 
 
 def test_gateway_calls_are_deduplicated_per_case(tmp_path: Path) -> None:
-    """`get_order` is fetched once and reused by every specialist in the case."""
+    """`get_order` is fetched once and reused by every specialist in the case.
+
+    This pins the per-case call budget for a non-money issue: `get_order` is
+    cached, the redundant `get_sellers` / `get_product_context` calls are gone
+    (their fields ride on `get_order_items`), and `get_refund_timeline` is
+    skipped because an unsupported claim cannot carry a refund.
+    """
     payloads, failing = _payloads()
     _output, _, gateway = _solve(tmp_path, _case("unsupported_claim"), payloads, failing)
 
@@ -381,13 +370,73 @@ def test_gateway_calls_are_deduplicated_per_case(tmp_path: Path) -> None:
         "get_customer_history",
         "get_order_items",
         "get_shipment_summary",
-        "get_sellers",
-        "get_product_context",
         "get_payment_timeline",
-        "get_refund_timeline",
         "get_policy",
     }
     assert len(tools) == len(set(tools))
+
+
+def test_seller_and_product_ids_come_from_order_items(tmp_path: Path) -> None:
+    """`affected_entities` is populated from the item rows alone, so the two
+    auxiliary seller/product tools stay out of the call budget."""
+    payloads, failing = _payloads()
+    output, _, gateway = _solve(tmp_path, _case("late_delivery_seller"), payloads, failing)
+
+    tools = {name for name, _case_id, _args in gateway.calls}
+    assert "get_sellers" not in tools
+    assert "get_product_context" not in tools
+    assert output["affected_entities"]["seller_ids"] == [SELLER]
+    assert output["affected_entities"]["item_ids"] == ["item-a"]
+
+
+def test_public_policy_is_fetched_as_case_evidence(tmp_path: Path) -> None:
+    """`get_policy` is the case-scoped evidence backing the money rule, so it is
+    fetched per case; the bundled rulebook only backstops a failed call."""
+    payloads, failing = _payloads()
+    output, _, gateway = _solve(tmp_path, _case("canceled_order_paid"), payloads, failing)
+
+    assert "get_policy" in {name for name, _case_id, _args in gateway.calls}
+    assert output["assessment"]["primary_issue"] == "canceled_order_paid"
+    assert output["financial_resolution"]["recommended_refund_brl"] == 79.0
+
+
+def test_policy_falls_back_to_the_bundled_rulebook(tmp_path: Path) -> None:
+    """When the MCP call fails, the bundled public rulebook still drives the rule."""
+    payloads, failing = _payloads()
+    failing = set(failing) | {"get_policy"}
+    output, _, gateway = _solve(tmp_path, _case("canceled_order_paid"), payloads, failing)
+
+    assert "get_policy" in {name for name, _case_id, _args in gateway.calls}
+    assert output["assessment"]["primary_issue"] == "canceled_order_paid"
+    assert output["financial_resolution"]["recommended_refund_brl"] == 79.0
+
+
+def test_refund_timeline_is_routed_by_issue(tmp_path: Path) -> None:
+    """A money issue fetches the refund timeline; a shipping issue does not."""
+    payloads, failing = _payloads(refund=_refund("failed", "52.00"))
+    _output, _, money = _solve(tmp_path, _case("refund_failed"), payloads, failing)
+    assert "get_refund_timeline" in {name for name, _c, _a in money.calls}
+
+    payloads, failing = _payloads()
+    _output, _, shipping = _solve(tmp_path, _case("late_delivery_logistics"), payloads, failing)
+    assert "get_refund_timeline" not in {name for name, _c, _a in shipping.calls}
+
+
+def test_unknown_policy_version_falls_back_to_the_mcp_tool(tmp_path: Path) -> None:
+    """A private/rotated version is still fetched from MCP instead of guessed."""
+    payloads, failing = _payloads()
+    payloads["get_policy"] = {
+        "currency": "BRL",
+        "policy_version": "EC_POLICY_V9",
+        "rules": POLICY_RULES,
+    }
+    case = _case("canceled_order_paid")
+    case["policy_version"] = "EC_POLICY_V9"
+    output, _, gateway = _solve(tmp_path, case, payloads, failing)
+
+    assert "get_policy" in {name for name, _case_id, _args in gateway.calls}
+    assert output["assessment"]["primary_issue"] == "canceled_order_paid"
+    assert output["financial_resolution"]["recommended_refund_brl"] == 79.0
 
 
 def test_claim_topic_defines_the_subject_of_the_dispute(tmp_path: Path) -> None:

@@ -8,8 +8,9 @@ Trach nhiem (huong-dan.txt Pha 3 + KE_HOACH_MILESTONE.md M2):
   - phan biet nguon "authoritative" (khop timeline cua get_order) voi nguon
     nhieu (moc thoi gian lech hang thang) truoc khi ket luan.
 
-Tool duoc cap (discovery that): get_order, get_order_items,
-get_shipment_summary, get_sellers, get_product_context.
+Tool duoc cap (discovery that): get_order, get_order_items, get_shipment_summary.
+`get_sellers` / `get_product_context` khong duoc goi: `get_order_items` da tra
+`seller_id` + `product_id` tren tung item row nen hai tool do chi ton call audit.
 
 Nguyen tac bat buoc (huong-dan.txt Pha 3): moi MCP call truyen dung case_id;
 KHONG tu tao/sua evidence_ref; ghi tool_result_consumed sau moi evidence.
@@ -37,8 +38,6 @@ TARGET_COORDINATOR = "coordinator"
 TOOL_ORDER = "get_order"
 TOOL_ORDER_ITEMS = "get_order_items"
 TOOL_SHIPMENT = "get_shipment_summary"
-TOOL_SELLERS = "get_sellers"
-TOOL_PRODUCT = "get_product_context"
 
 MAX_IDS = 20
 
@@ -336,28 +335,15 @@ async def run(
     )
     shipment = shipment_data if isinstance(shipment_data, dict) else {}
 
-    sellers_data = await _consume(
-        gateway, case_id, TOOL_SELLERS, trace, result.evidence_refs, order_id=order_id
-    )
-    sellers = _rows(sellers_data)
-
-    product_data = await _consume(
-        gateway, case_id, TOOL_PRODUCT, trace, result.evidence_refs, order_id=order_id
-    )
-    products = _rows(product_data)
-
+    # `get_order_items` already carries `seller_id` and `product_id` on each item
+    # row, so the separate `get_sellers` / `get_product_context` calls only burn
+    # audited MCP budget without adding a field the output consumes.
     anchors = order_anchors(order)
     consistent_items = pick_consistent(items, anchors) or items
 
     result.item_ids = _dedupe([_text(row.get("order_item_id")) for row in items])[:MAX_IDS]
-    result.seller_ids = _dedupe(
-        [_text(row.get("seller_id")) for row in items]
-        + [_text(row.get("seller_id")) for row in sellers]
-    )[:MAX_IDS]
-    result.product_ids = _dedupe(
-        [_text(row.get("product_id")) for row in products]
-        + [_text(row.get("product_id")) for row in items]
-    )[:MAX_IDS]
+    result.seller_ids = _dedupe([_text(row.get("seller_id")) for row in items])[:MAX_IDS]
+    result.product_ids = _dedupe([_text(row.get("product_id")) for row in items])[:MAX_IDS]
     result.shipment_ids = _dedupe(
         [
             _text(event.get("shipment_id"))
